@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>极简天气状态</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(45deg, #87CEEB, #4682B4);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 雨天背景 */
+        body.rainy {
+            background: linear-gradient(45deg, #2c3e50, #3498db);
+        }
+
+        /* 雨滴效果 */
+        .rain {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .raindrop {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.6);
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            from { transform: translateY(-100px); }
+            to { transform: translateY(100vh); }
+        }
+
+        .weather-container {
+            text-align: center;
+            color: white;
+            position: relative;
+            z-index: 2;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .location {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            animation: fadeIn 1s ease;
+        }
+
+        .weather-icon {
+            font-size: 6rem;
+            margin: 1.5rem 0;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .temperature {
+            font-size: 5rem;
+            font-weight: 300;
+            margin: 1rem 0;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .weather-status {
+            font-size: 2.5rem;
+            margin: 1rem 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: textGlow 2s ease-in-out infinite;
+        }
+
+        /* 动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes textGlow {
+            0%, 100% { text-shadow: 0 0 10px rgba(255,255,255,0.3); }
+            50% { text-shadow: 0 0 20px rgba(255,255,255,0.6); }
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+    </style>
+    <script src="https://kit.fontawesome.com/your-font-awesome-kit.js"></script>
+</head>
+<body>
+    <div class="weather-container">
+        <div class="location">
+            <i class="fas fa-map-marker-alt"></i>
+            <span id="city">加载中...</span>
+        </div>
+        <i class="fas fa-sun weather-icon"></i>
+        <div class="temperature" id="temp">--°C</div>
+        <div class="weather-status" id="weatherStatus">晴天</div>
+    </div>
+
+    <script>
+        const API_KEY = '9f67e6125e94d39f28e1292192ed172e';
+        
+        // 默认城市设置
+        window.onload = function() {
+            getWeather('Changsha');
+        }
+
+        async function getWeather(city) {
+            try {
+                const response = await fetch(
+                    `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${API_KEY}`
+                );
+                const data = await response.json();
+
+                if (data.cod === 200) {
+                    updateWeatherUI(data);
+                    updateBackgroundEffects(data.weather[0].main);
+                } else {
+                    showError();
+                }
+            } catch (error) {
+                showError();
+            }
+        }
+
+        function updateWeatherUI(data) {
+            document.getElementById('city').textContent = data.name;
+            document.getElementById('temp').textContent = `${Math.round(data.main.temp)}°C`;
+            
+            // 更新天气状态文字
+            const statusMap = {
+                Clear: '晴天',
+                Rain: '雨天',
+                Clouds: '多云',
+                Thunderstorm: '雷暴',
+                Snow: '下雪',
+                Mist: '薄雾'
+            };
+            const status = statusMap[data.weather[0].main] || '未知';
+            document.getElementById('weatherStatus').textContent = status;
+
+            // 更新天气图标
+            const icon = document.querySelector('.weather-icon');
+            const iconMap = {
+                Clear: 'fa-sun',
+                Rain: 'fa-cloud-rain',
+                Clouds: 'fa-cloud',
+                Thunderstorm: 'fa-bolt',
+                Snow: 'fa-snowflake',
+                Mist: 'fa-smog'
+            };
+            icon.className = `fas ${iconMap[data.weather[0].main] || 'fa-cloud'} weather-icon`;
+        }
+
+        function updateBackgroundEffects(weatherCondition) {
+            const body = document.body;
+            body.className = '';
+            
+            // 移除现有雨滴
+            const existingRain = document.querySelector('.rain');
+            if (existingRain) existingRain.remove();
+
+            if (weatherCondition === 'Rain') {
+                body.classList.add('rainy');
+                createRainEffect();
+            }
+        }
+
+        function createRainEffect() {
+            const rainContainer = document.createElement('div');
+            rainContainer.className = 'rain';
+            
+            for (let i = 0; i < 50; i++) {
+                const raindrop = document.createElement('div');
+                raindrop.className = 'raindrop';
+                raindrop.style.left = Math.random() * 100 + '%';
+                raindrop.style.animationDuration = Math.random() * 0.5 + 0.5 + 's';
+                rainContainer.appendChild(raindrop);
+            }
+            
+            document.body.appendChild(rainContainer);
+        }
+
+        function showError() {
+            document.getElementById('city').textContent = '数据获取失败';
+            document.getElementById('temp').textContent = '--°C';
+        }
+    </script>
+</body>
+</html>
